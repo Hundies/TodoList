@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Todo List</title>
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Todo List">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@200;300;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+
+  :root {
+    --bg: #faf8f5;
+    --card: #fff;
+    --card2: #f0ede8;
+    --text: #3d3530;
+    --subtext: #a89f97;
+    --border: #e4ddd5;
+    --danger: #e07b7b;
+    --add-green: #5db882;
+    --add-green-bg: rgba(80,180,120,0.13);
+    --today-bg: var(--card);
+    --today-border: #2196f3;
+    --today-accent: #2196f3;
+    --imp-text: #d04040;
+  }
+
+  html, body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    height: 100%; width: 100%; overflow: hidden;
+    display: flex; justify-content: center; align-items: center;
+    -webkit-user-select: none; user-select: none;
+  }
+  .app { width:100%; height:100%; background:var(--bg); position:relative; overflow:hidden; display:flex; flex-direction:column; }
+
+  /* Header */
+  .app-header { padding:9px 16px 4px; flex-shrink:0; display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--border); background:var(--card); }
+  .header-left { display:flex; align-items:center; gap:3px; align-self:center; }
+  .menu-btn { width:20px; height:36px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px; flex-shrink:0; padding:0; margin-bottom:3px; }
+  .menu-dot { width:4px; height:4px; border-radius:50%; background:var(--subtext); }
+  .app-title { font-size:22px; font-weight:500; letter-spacing:3px; color:var(--text); text-transform:uppercase; font-family:'Barlow Condensed', sans-serif; display:inline-block; transform:scaleY(2.2) scaleX(0.85); transform-origin:center center; line-height:1; }
+  .header-date { font-size:13px; color:var(--subtext); padding-bottom:4px; }
+
+  /* Data modal */
+  .data-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:400; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .data-modal-overlay.show { display:flex; }
+  .data-modal { background:var(--card); border-radius:20px; padding:22px; width:310px; box-shadow:0 12px 40px rgba(0,0,0,0.18); }
+  .data-modal-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:18px; text-align:center; }
+  .data-section { background:var(--card2); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .data-section-title { font-size:12px; font-weight:700; color:var(--subtext); letter-spacing:0.4px; margin-bottom:10px; }
+  .data-btn { width:100%; padding:11px; border-radius:12px; border:none; font-size:14px; font-weight:500; font-family:'Noto Sans KR',sans-serif; cursor:pointer; text-align:center; transition:opacity 0.15s; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .data-btn:active { opacity:0.7; }
+  .data-btn.export { background:var(--today-accent); color:#fff; margin-bottom:8px; }
+  .data-btn.import { background:var(--card); color:var(--text); border:1.5px solid var(--border); }
+  .data-notice { font-size:11px; color:var(--subtext); text-align:center; margin-bottom:12px; }
+  .data-close-btn { width:100%; padding:11px; border-radius:12px; border:none; font-size:14px; font-weight:500; font-family:'Noto Sans KR',sans-serif; background:var(--card2); color:var(--subtext); cursor:pointer; }
+
+  .scroll-wrap { flex:1; overflow-y:auto; scrollbar-width:none; }
+  .scroll-wrap::-webkit-scrollbar { display:none; }
+
+  /* Day Card */
+  .day-card { background:var(--card); border-radius:12px; overflow:hidden; flex-shrink:0; border:1px solid var(--border); box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+  .day-card.today { background:var(--today-bg); border:2px solid var(--today-accent); }
+  .day-card.drag-over { box-shadow:inset 0 0 0 2px rgba(255,71,87,0.4)!important; }
+
+  .day-header { display:flex; align-items:center; justify-content:space-between; padding:0 12px; height:32px; cursor:pointer; box-sizing:border-box; overflow:hidden; }
+  .day-header.has-todos { border-bottom:1px solid var(--border); }
+  .day-card.today .day-header.has-todos { border-bottom-color:rgba(33,150,243,0.3); }
+  .day-left { display:flex; align-items:center; gap:7px; flex:1; }
+  .day-name { font-size:16px; font-weight:800; color:var(--text); text-transform:uppercase; letter-spacing:0.8px; font-family:'Barlow Condensed', sans-serif; }
+  .day-card.today .day-name { color:var(--today-accent); }
+  .today-badge { font-size:9px; font-weight:800; color:#fff; background:var(--today-accent); padding:2px 7px; border-radius:3px; letter-spacing:0.5px; text-transform:uppercase; }
+  .tomorrow-badge { font-size:10px; font-weight:700; color:#6b92d4; background:rgba(107,146,212,0.12); padding:2px 6px; border-radius:6px; }
+  .dday-badge { font-size:13px; font-weight:600; letter-spacing:0.3px; font-family:'Barlow Condensed',sans-serif; opacity:0.9; }
+  .overdue-badge { font-size:9px; font-weight:600; color:#e53935; border:1px solid #e53935; padding:1px 4px; border-radius:3px; letter-spacing:0.2px; }
+  .day-right { display:flex; align-items:center; gap:10px; padding-right:4px; }
+  .day-chevron { font-size:15px; color:var(--subtext); font-weight:500; transition:transform 0.2s; display:inline-block; line-height:1; }
+  .day-chevron.open { transform:rotate(90deg); }
+  .day-add-btn { width:24px; height:24px; border-radius:50%; background:rgba(33,150,243,0.12); border:none; color:var(--today-accent); font-size:17px; font-weight:500; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding-bottom:1px; flex-shrink:0; transition:background 0.15s; margin:0 4px; }
+  .day-card.today .day-add-btn { background:rgba(33,150,243,0.18); color:var(--today-accent); }
+  .day-add-btn:active { background:rgba(33,150,243,0.3); }
+
+  .todo-list { overflow:hidden; }
+  .todo-list.collapsed { display:none; }
+
+  .swipe-row { position:relative; overflow:hidden; border-top:1px solid var(--border); }
+  .swipe-row:first-child { border-top:none; }
+  .swipe-row.drop-above { border-top:2px solid var(--add-green); }
+  .inbox-item.drop-above { border-top:2px solid var(--add-green); }
+
+  .action-left { position:absolute; top:0; left:0; bottom:0; width:90px; background:#5352ed; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:3px; opacity:0; pointer-events:none; transition:opacity 0.1s; }
+  .action-left.show { opacity:1; pointer-events:auto; }
+  .action-left span { color:white; font-size:10px; font-weight:500; }
+  .action-right { position:absolute; top:0; right:0; bottom:0; width:90px; background:var(--danger); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:3px; opacity:0; pointer-events:none; transition:opacity 0.1s; }
+  .action-right.show { opacity:1; pointer-events:auto; }
+  .action-right span { color:white; font-size:10px; font-weight:500; }
+
+  .todo-item { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--card); position:relative; z-index:1; transform:translateX(0); transition:transform 0.18s ease; touch-action:pan-y; user-select:none; }
+  .day-card.today .todo-item { background:var(--today-bg); }
+  .todo-item.dragging { box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:50; }
+  .todo-item.important:not(.done) .todo-text { color:var(--imp-text)!important; font-weight:500; }
+
+  .todo-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; transition:all 0.18s; }
+  .day-card.today .todo-item .todo-check { border-color:rgba(33,150,243,0.5); }
+  .todo-item.done .todo-check { background:var(--today-accent); border-color:var(--today-accent); }
+  .checkmark { display:none; }
+  .todo-item.done .checkmark { display:block; }
+  .priority-tag { font-size:13px; flex-shrink:0; }
+  .todo-text { font-size:13px; color:var(--text); font-weight:500; flex:1; letter-spacing:-0.2px; }
+  .todo-item.done .todo-text { text-decoration:line-through; color:var(--subtext); }
+  .todo-text.carried::after { content:' ↩'; font-size:11px; color:var(--subtext); }
+
+  .todo-item.indent { padding-left:36px; }
+  .todo-item.indent .todo-text { color:var(--subtext); font-size:12.5px; font-style:italic; }
+  .todo-item.indent .todo-check { width:16px; height:16px; flex-shrink:0; }
+
+  .drop-placeholder { height:36px; margin:3px 8px; border-radius:8px; background:rgba(255,71,87,0.08); border:2px dashed var(--add-green); display:none; }
+  .drop-placeholder.show { display:block; }
+
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 0 20px; color:var(--subtext); }
+  .empty-icon { font-size:40px; opacity:0.4; }
+  .empty-text { font-size:14px; }
+
+  /* FAB */
+  .fab { position:fixed; right:20px; width:50px; height:50px; border-radius:50%; background:var(--today-accent); border:none; color:white; font-size:28px; font-weight:500; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(33,150,243,0.4); transition:bottom 0.2s ease; z-index:100; padding-bottom:2px; }
+  .fab:active { transform:scale(0.93); }
+  /* FAB 아래 투명 가림막 - 날짜칸이 이 뒤로 숨음 */
+  /* FAB 영역 항상 여백 확보 */
+  .days-container { padding:8px 12px 0; display:flex; flex-direction:column; gap:8px; }
+  /* Inbox */
+  .inbox-section { flex-shrink:0; background:var(--card); border-radius:0; box-shadow:0 -2px 12px rgba(0,0,0,0.07); border-top:1px solid var(--border); z-index:50; position:relative; }
+  .inbox-section.drag-over { outline:2px dashed var(--add-green); outline-offset:-2px; }
+  .inbox-header { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer; user-select:none; }
+  .inbox-title { font-size:15px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:7px; }
+  .inbox-count { font-size:11px; color:var(--subtext); background:var(--card2); padding:2px 7px; border-radius:8px; }
+  .inbox-right { display:flex; align-items:center; gap:8px; }
+  .inbox-chevron { font-size:15px; color:var(--subtext); font-weight:500; transition:transform 0.2s; display:inline-block; line-height:1; }
+  .inbox-chevron.open { transform:rotate(90deg); }
+  .inbox-body { display:none; border-top:1px solid var(--border); }
+  .inbox-body.open { display:block; }
+  .inbox-item { display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--border); touch-action:pan-y; user-select:none; -webkit-user-select:none; }
+  .inbox-item:last-child { border-bottom:none; }
+  .inbox-item.dragging { opacity:0.35; }
+  .memo-modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.4);
+    z-index:300; display:none; align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+  }
+  .memo-modal-overlay.show { display:flex; }
+  .memo-modal-box {
+    background:var(--card); border-radius:16px; padding:16px;
+    width:calc(100% - 24px); max-width:420px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.2);
+  }
+  .memo-modal-box .modal-title { margin-bottom:12px; }
+  .memo-modal-box .modal-buttons { margin-top:12px; }
+  .memo-btn {
+    border:none; background:none; cursor:pointer; padding:3px 4px;
+    color:var(--subtext); flex-shrink:0; opacity:0.45; line-height:1;
+    display:flex; align-items:center; -webkit-appearance:none;
+  }
+  .memo-btn:active { opacity:1; color:var(--today-accent); }
+  .memo-btn.has-memo { opacity:0.9; color:var(--today-accent); }
+  .inbox-move-btn {
+    border:none; background:none; cursor:pointer; padding:2px 3px;
+    color:#5b9bd5; flex-shrink:0; opacity:0.55; line-height:1;
+    display:flex; align-items:center; -webkit-appearance:none;
+  }
+  .inbox-move-btn:active { opacity:1; }
+
+  .inbox-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .inbox-memo-btn {
+    border:none; background:none; cursor:pointer; padding:3px 4px;
+    color:var(--subtext); flex-shrink:0; opacity:0.45; line-height:1;
+    display:flex; align-items:center; -webkit-appearance:none;
+  }
+  .inbox-memo-btn:active { opacity:1; color:var(--today-accent); }
+  .inbox-memo-btn.has-memo { opacity:0.9; color:var(--today-accent); }
+  .inbox-today-btn {
+    border:none; background:rgba(33,150,243,0.1); cursor:pointer;
+    padding:2px 7px; border-radius:6px; font-size:11px; font-weight:700;
+    color:var(--today-accent); flex-shrink:0; font-family:'Noto Sans KR',sans-serif;
+    -webkit-appearance:none;
+  }
+  .inbox-today-btn:active { background:rgba(33,150,243,0.25); }
+  .done-delete-btn {
+    border:none; background:none; cursor:pointer; padding:3px 4px;
+    color:var(--subtext); flex-shrink:0; opacity:0.45; line-height:1;
+    font-size:12px; display:flex; align-items:center; -webkit-appearance:none;
+  }
+  .done-delete-btn:active { opacity:1; color:var(--danger); }
+
+  .inbox-dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; transition:all 0.18s; }
+  .inbox-item.done .inbox-dot { background:var(--add-green); border-color:var(--add-green); }
+  .inbox-item.done .inbox-text { text-decoration:line-through; color:var(--subtext); }
+  .inbox-text { font-size:13px; color:var(--text); flex:1; pointer-events:none; }
+  .inbox-add-row { display:flex; align-items:center; gap:8px; padding:8px 14px; border-top:1px solid var(--border); }
+  .inbox-add-icon { width:22px; height:22px; border-radius:50%; background:var(--add-green-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--add-green); font-size:16px; cursor:pointer; }
+  .inbox-input { flex:1; background:transparent; border:none; outline:none; font-size:16px; color:var(--text); font-family:'Noto Sans KR',sans-serif; -webkit-user-select:text; user-select:text; }
+  .inbox-input::placeholder { color:var(--border); }
+  .inbox-drop-placeholder { height:32px; margin:3px 10px; border-radius:8px; background:rgba(255,71,87,0.08); border:2px dashed var(--add-green); display:none; }
+  .inbox-drop-placeholder.show { display:block; }
+
+  .drag-clone { position:fixed; pointer-events:none; z-index:9999; box-shadow:0 8px 24px rgba(0,0,0,0.5); border-radius:10px; overflow:hidden; opacity:0.95; transition:none; }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(180,170,160,0.4); z-index:200; display:none; align-items:flex-end; backdrop-filter:blur(6px); }
+  .modal-overlay.show { display:flex; }
+  #cal-overlay { z-index:300; }
+  .modal { width:100%; background:var(--card); border-radius:20px 20px 0 0; padding:18px 18px 0; box-shadow:0 -4px 24px rgba(0,0,0,0.12); max-height:92vh; overflow-y:auto; padding-bottom:env(safe-area-inset-bottom, 16px); }
+  .modal-inner { padding-bottom:20px; }
+  .modal-title { font-size:15px; font-weight:700; margin-bottom:14px; color:var(--today-accent); padding-top:4px; }
+  .field-label { font-size:11px; font-weight:500; color:var(--subtext); margin-bottom:5px; letter-spacing:0.3px; }
+  .field-wrap { margin-bottom:12px; }
+  .modal-input, .date-input, .time-input, .select-input { width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:10px 13px; color:var(--text); font-size:16px; font-family:'Noto Sans KR',sans-serif; outline:none; -webkit-appearance:none; appearance:none; -webkit-user-select:text; user-select:text; }
+  .modal-input:focus, .date-input:focus, .time-input:focus, .select-input:focus { border-color:var(--today-accent); }
+  .inbox-input { flex:1; background:transparent; border:none; outline:none; font-size:16px; color:var(--text); font-family:'Noto Sans KR',sans-serif; -webkit-user-select:text; user-select:text; }
+  .inbox-input::placeholder { color:var(--border); }
+  .priority-row { display:flex; gap:7px; margin-bottom:12px; }
+  .priority-opt { flex:1; padding:7px 4px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-size:12px; font-weight:500; font-family:'Noto Sans KR',sans-serif; cursor:pointer; text-align:center; transition:all 0.15s; color:var(--subtext); }
+  .priority-opt.sel-none { border-color:var(--add-green); color:var(--add-green); background:rgba(80,180,120,0.07); }
+  .priority-opt.sel-important { border-color:#e08080; color:#d04040; background:#fff5f5; }
+  .priority-opt.sel-urgent { border-color:#e08080; color:#d04040; background:#fff5f5; }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+  .toggle-row:last-child { border-bottom:none; }
+  .toggle-label { font-size:14px; color:var(--text); }
+  .toggle { width:44px; height:26px; border-radius:13px; background:var(--border); position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0; border:none; }
+  .toggle.on { background:var(--add-green); }
+  .toggle::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:white; transition:left 0.2s; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+  .toggle.on::after { left:21px; }
+  .modal-buttons { display:flex; gap:9px; margin-top:14px; }
+  .modal-btn { flex:1; padding:11px; border-radius:12px; border:none; font-size:15px; font-weight:500; font-family:'Noto Sans KR',sans-serif; cursor:pointer; transition:opacity 0.15s; }
+  .modal-btn:active { opacity:0.7; }
+  .modal-btn.cancel { background:var(--card2); color:var(--subtext); }
+  .modal-btn.confirm { background:var(--today-accent); color:#fff; }
+  .modal-btn.danger { background:rgba(224,123,123,0.15); color:var(--danger); }
+
+  /* Inline Calendar */
+  .inline-cal { background:var(--bg); border-radius:10px; padding:5px 6px; margin-bottom:12px; overflow:hidden; }
+  .inline-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+  .inline-cal-title { font-size:12px; font-weight:700; color:var(--text); }
+  .inline-cal-arrow { width:16px; height:16px; border-radius:50%; border:none; background:var(--border); color:var(--text); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .inline-cal-arrow:active { background:var(--card2); }
+  .inline-cal-grid-wrap { overflow:hidden; position:relative; height:calc(22px * 7 + 4px); }
+  .inline-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); border-left:1px solid rgba(255,255,255,0.9); border-top:1px solid rgba(255,255,255,0.9); position:absolute; width:100%; transition:transform 0.28s ease, opacity 0.28s ease; }
+  .inline-cal-grid.slide-out-left  { transform:translateX(-100%); opacity:0; }
+  .inline-cal-grid.slide-out-right { transform:translateX(100%);  opacity:0; }
+  .inline-cal-grid.slide-in-left   { transform:translateX(100%);  opacity:0; }
+  .inline-cal-grid.slide-in-right  { transform:translateX(-100%); opacity:0; }
+  .inline-cal-grid.slide-active    { transform:translateX(0);      opacity:1; }
+  .inline-cal-dow { text-align:center; font-size:10px; font-weight:700; color:var(--subtext); padding:2px 0; border-right:1px solid rgba(255,255,255,0.9); border-bottom:1px solid rgba(255,255,255,0.9); }
+  .inline-cal-day { height:22px; border:none; background:transparent; font-size:12px; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.12s; position:relative; min-width:0; border-right:1px solid rgba(255,255,255,0.9); border-bottom:1px solid rgba(255,255,255,0.9); }
+  .inline-cal-day:hover { background:rgba(255,255,255,0.05); }
+  .inline-cal-day.empty { pointer-events:none; }
+  .inline-cal-day.today-mark { color:var(--today-accent); font-weight:700; box-shadow:inset 0 0 0 1.5px var(--today-accent); }
+  .inline-cal-day.selected { background:var(--today-accent); color:#fff; font-weight:700; box-shadow:none; }
+  .inline-cal-day.has-todo::after { content:''; width:2px; height:2px; border-radius:50%; background:var(--today-accent); position:absolute; bottom:1px; left:50%; transform:translateX(-50%); }
+  .inline-cal-day.selected::after { background:rgba(255,255,255,0.7); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="header-left">
+      <button class="menu-btn" onclick="openDataModal()">
+        <div class="menu-dot"></div>
+        <div class="menu-dot"></div>
+        <div class="menu-dot"></div>
+      </button>
+      <div class="app-title">Todo List</div>
+    </div>
+    <div class="header-date" id="header-date"></div>
+  </div>
+  <div class="scroll-wrap" id="scroll-wrap">
+    <div class="days-container" id="days-container"></div>
+  </div>
+  <button class="fab" id="fab" onclick="openAddModal()">+</button>
+  <div class="inbox-section" id="inbox-section">
+    <div class="inbox-header" onclick="toggleInbox()">
+      <div class="inbox-title">📥 Inbox</div>
+      <div class="inbox-right">
+        <span class="inbox-count" id="inbox-count"></span>
+        <span class="inbox-chevron" id="inbox-chevron">›</span>
+      </div>
+    </div>
+    <div class="inbox-body" id="inbox-body">
+      <div id="inbox-list"></div>
+      <div class="inbox-drop-placeholder" id="inbox-placeholder"></div>
+      <div class="inbox-add-row">
+        <div class="inbox-add-icon" onclick="addInboxItem()">+</div>
+        <input class="inbox-input" id="inbox-input" placeholder="할 일 추가..." maxlength="100" onkeydown="if(event.key==='Enter') addInboxItem()"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Modal -->
+<div class="data-modal-overlay" id="data-modal-overlay" onclick="if(event.target===this)closeDataModal()">
+  <div class="data-modal">
+    <div class="data-modal-title">⚙️ 데이터 관리</div>
+    <div class="data-section">
+      <div class="data-section-title">📤 내보내기</div>
+      <div class="data-notice">아래 버튼을 눌러 파일로 저장하세요</div>
+      <button class="data-btn export" onclick="exportData()">📤 내보내기</button>
+    </div>
+    <div class="data-section">
+      <div class="data-section-title">📥 가져오기</div>
+      <div class="data-notice">TodoList-backup.json 파일을 선택하세요</div>
+      <button class="data-btn import" onclick="importData()">📂 파일 선택해서 가져오기</button>
+    </div>
+    <button class="data-btn" id="restore-btn" onclick="restoreLastDeleted()" style="background:rgba(33,150,243,0.1); color:var(--today-accent); border:1.5px solid var(--today-accent); margin-bottom:12px;">↩ 삭제 항목 복구 (최근 10개)</button>
+    <button class="data-btn" onclick="resetAllData()" style="background:rgba(224,60,60,0.1); color:#d04040; border:1.5px solid #d04040; margin-bottom:12px;">🗑 전체 초기화</button>
+    <button class="data-close-btn" onclick="closeDataModal()">닫기</button>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <div class="modal-inner">
+      <div class="modal-title">할 일 추가</div>
+      <div class="field-wrap">
+        <div class="field-label">제목</div>
+        <input class="modal-input" id="add-text" placeholder="무엇을 해야 하나요?" maxlength="60" autocomplete="off" inputmode="text"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">날짜</div>
+        <div class="inline-cal" id="add-inline-cal">
+          <div class="inline-cal-header">
+            <button class="inline-cal-arrow" onclick="addCalChangeMonth(-1)">‹</button>
+            <div class="inline-cal-title" id="add-cal-title"></div>
+            <button class="inline-cal-arrow" onclick="addCalChangeMonth(1)">›</button>
+          </div>
+          <div class="inline-cal-grid-wrap" id="add-cal-wrap">
+            <div class="inline-cal-grid slide-active" id="add-cal-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">우선순위</div>
+        <div class="priority-row">
+          <button class="priority-opt sel-none" id="add-opt-none"      onclick="setAddPriority('none')">일반</button>
+          <button class="priority-opt"          id="add-opt-important" onclick="setAddPriority('important')">중요</button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeAddModal()">취소</button>
+        <button class="modal-btn confirm" onclick="confirmAdd()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="modal-inner">
+      <div class="modal-title">할 일 편집</div>
+      <div class="field-wrap">
+        <div class="field-label">제목</div>
+        <input class="modal-input" id="edit-text" placeholder="제목" maxlength="60" autocomplete="off" inputmode="text"/>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">날짜</div>
+        <div class="inline-cal" id="edit-inline-cal">
+          <div class="inline-cal-header">
+            <button class="inline-cal-arrow" onclick="editCalChangeMonth(-1)">‹</button>
+            <div class="inline-cal-title" id="edit-cal-title"></div>
+            <button class="inline-cal-arrow" onclick="editCalChangeMonth(1)">›</button>
+          </div>
+          <div class="inline-cal-grid-wrap" id="edit-cal-wrap">
+            <div class="inline-cal-grid slide-active" id="edit-cal-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">우선순위</div>
+        <div class="priority-row">
+          <button class="priority-opt sel-none" id="edit-opt-none"      onclick="setEditPriority('none')">일반</button>
+          <button class="priority-opt"          id="edit-opt-important" onclick="setEditPriority('important')">중요</button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeEditModal()">취소</button>
+        <button class="modal-btn confirm" onclick="confirmEdit()">저장</button>
+      </div>
+      <div class="modal-buttons" style="margin-top:8px; padding-bottom:4px;">
+        <button class="modal-btn danger" onclick="confirmDeleteFromEdit()">🗑 삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inbox Edit Modal -->
+<div class="modal-overlay" id="inbox-edit-modal" onclick="if(event.target===this)closeInboxEdit()">
+  <div class="modal">
+    <div class="modal-inner">
+      <div class="modal-title">메모 편집</div>
+      <div class="field-wrap">
+        <div class="field-label">내용</div>
+        <input class="modal-input" id="inbox-edit-text" placeholder="내용" maxlength="100" autocomplete="off"
+          onkeydown="if(event.key==='Enter')confirmInboxEdit();if(event.key==='Escape')closeInboxEdit()"/>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeInboxEdit()">취소</button>
+        <button class="modal-btn confirm" onclick="confirmInboxEdit()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Memo Modal -->
+<div class="memo-modal-overlay" id="memo-modal" onclick="if(event.target===this)closeMemoModal()">
+  <div class="memo-modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" style="margin-bottom:8px;">📝 메모</div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span style="font-size:11px; color:var(--subtext);">글머리 •</span>
+      <div id="memo-bullet-toggle"
+        ontouchstart="event.preventDefault();toggleMemoBullet();event.stopPropagation();"
+        onclick="toggleMemoBullet();event.stopPropagation();"
+        style="padding:4px 12px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; color:var(--subtext); cursor:pointer; font-family:'Noto Sans KR',sans-serif; user-select:none; -webkit-user-select:none; display:inline-block; background:var(--bg);">
+        ○ 없음
+      </div>
+    </div>
+    <textarea class="modal-input" id="memo-text" placeholder="메모를 입력하세요..." 
+      style="resize:none; height:340px; -webkit-user-select:text; user-select:text; font-size:15px; line-height:1.6;"
+      onkeydown="handleMemoKey(event)"></textarea>
+    <div class="modal-buttons" style="margin-top:8px;">
+      <button class="modal-btn cancel" onclick="closeMemoModal()">취소</button>
+      <button class="modal-btn confirm" onclick="confirmMemo()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Modal (드롭) -->
+<div class="modal-overlay" id="cal-overlay" onclick="if(event.target===this)closeCalModal()">
+  <div class="modal">
+    <div class="modal-inner">
+      <div class="modal-title">날짜 선택</div>
+      <div class="field-wrap">
+        <div class="inline-cal" id="drop-cal-box">
+          <div class="inline-cal-header">
+            <button class="inline-cal-arrow" onclick="dropCalChangeMonth(-1)">‹</button>
+            <div class="inline-cal-title" id="drop-cal-title"></div>
+            <button class="inline-cal-arrow" onclick="dropCalChangeMonth(1)">›</button>
+          </div>
+          <div class="inline-cal-grid-wrap" id="drop-cal-wrap">
+            <div class="inline-cal-grid slide-active" id="drop-cal-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeCalModal()">취소</button>
+        <button class="modal-btn confirm" onclick="confirmCalPick()">이동</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS_KO=['일','월','화','수','목','금','토'];
+let data={}, inbox=[], collapsedDays={};
+let addPriority='none', editPriority='none';
+let editTarget=null;
+let dragInfo=null, ghost=null, currentDropTarget=null;
+
+// Storage
+function load(){ try{ const r=localStorage.getItem('todo-list-v1'); if(r) data=JSON.parse(r); }catch(e){} }
+function save(){ try{ localStorage.setItem('todo-list-v1',JSON.stringify(data)); }catch(e){} }
+function loadInbox(){ try{ const r=localStorage.getItem('todo-inbox-v1'); if(r) inbox=JSON.parse(r); }catch(e){} }
+function saveInbox(){ try{ localStorage.setItem('todo-inbox-v1',JSON.stringify(inbox)); }catch(e){} }
+function loadCollapsed(){ try{ const r=localStorage.getItem('todo-collapsed'); if(r) collapsedDays=JSON.parse(r); }catch(e){} }
+function saveCollapsed(){ try{ localStorage.setItem('todo-collapsed',JSON.stringify(collapsedDays)); }catch(e){} }
+
+function getKey(d){ if(d instanceof Date){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; } return d; }
+function getTodayKey(){ return getKey(new Date()); }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function autoCarryOver(){
+  const todayKey=getTodayKey(), lk='todo-list-lastrun';
+  try{ if(localStorage.getItem(lk)===todayKey) return; }catch(e){}
+  // 과거 미완료 → 오늘로 이동 + overdue 표시
+  Object.keys(data).sort().forEach(key=>{
+    if(key<todayKey){
+      const inc=data[key].filter(t=>!t.done);
+      if(inc.length){
+        if(!data[todayKey]) data[todayKey]=[];
+        // 이미 오늘에 같은 텍스트 없는 것만 추가
+        const todayTexts=data[todayKey].map(t=>t.text);
+        inc.forEach(t=>{
+          if(!todayTexts.includes(t.text)){
+            data[todayKey].push({...t, done:false, overdue:true, overdueFrom:key});
+            todayTexts.push(t.text);
+          }
+        });
+        data[key]=data[key].filter(t=>t.done);
+        if(!data[key].length) delete data[key];
+      }
+    }
+  });
+  save(); try{ localStorage.setItem(lk,todayKey); }catch(e){}
+}
+
+function render(){
+  const todayKey=getTodayKey(), now=new Date();
+  const ny=now.getFullYear(), nmo=String(now.getMonth()+1).padStart(2,'0'), nd=String(now.getDate()).padStart(2,'0');
+  document.getElementById('header-date').textContent=`${ny}년 ${nmo}월 ${nd}일 (${DAYS_KO[now.getDay()]})`;
+  const container=document.getElementById('days-container');
+  container.innerHTML='';
+  const tomorrowDate=new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
+  const tomorrowKey=getKey(tomorrowDate);
+  // 오늘 이후 날짜만 표시
+  let keys=Object.keys(data).filter(k=>data[k]&&data[k].length>0&&k>=todayKey).sort();
+  if(!keys.includes(todayKey)) keys.unshift(todayKey);
+
+  keys.forEach(key=>{
+    const isToday=key===todayKey, isTomorrow=key===tomorrowKey;
+    const todos=(data[key]||[]).map((t,i)=>({...t,_origIdx:i}));
+    const [y,m,d]=key.split('-').map(Number);
+    const dateObj=new Date(y,m-1,d);
+    const dayStr=`${m}/${d} (${DAYS_KO[dateObj.getDay()]})`;
+    const done=todos.filter(t=>t.done).length;
+    const collapsed=!!collapsedDays[key];
+
+    // D-day 계산
+    const todayDate=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const diffMs=dateObj-todayDate;
+    const diffDays=Math.round(diffMs/(1000*60*60*24));
+    let ddayStr='', ddayColor='var(--subtext)';
+    if(diffDays===0){ /* 오늘은 D-day 없음 */ }
+    else if(diffDays>0){ ddayStr=`D-${diffDays}`; ddayColor=isTomorrow?'#6b92d4':'var(--subtext)'; }
+    else { ddayStr=`D+${Math.abs(diffDays)}`; ddayColor='#e53935'; }
+
+    const card=document.createElement('div');
+    card.className='day-card'+(isToday?' today':'');
+    card.dataset.key=key;
+    card.innerHTML=`
+      <div class="day-header ${todos.length>0&&!collapsed?'has-todos':''}">
+        <div class="day-left">
+          <span class="day-name">${dayStr}</span>
+          ${isToday?'<span class="today-badge">오늘</span>':''}
+          ${isTomorrow?'<span class="tomorrow-badge">내일</span>':''}
+          ${ddayStr?`<span class="dday-badge" style="color:${ddayColor}">${ddayStr}</span>`:''}
+        </div>
+        <div class="day-right">
+          <button class="day-add-btn" onclick="openAddModalForDate('${key}');event.stopPropagation()">+</button>
+          ${todos.length>0?`<span class="day-chevron ${collapsed?'':'open'}" id="chev-${key}" onclick="toggleDayCard('${key}')">›</span>`:`<span class="day-chevron" style="opacity:0">›</span>`}
+        </div>
+      </div>
+      <div class="todo-list ${collapsed?'collapsed':''}" id="list-${key}"></div>`;
+    container.appendChild(card);
+
+    const list=card.querySelector(`#list-${key}`);
+    todos.forEach((t,i)=>{
+      const origIdx=t._origIdx;
+      const isOverdue=(t.overdue||key<todayKey)&&!t.done;
+      // overdue 날짜: t.overdue이면 원래 날짜 key 기준, 아니면 현재 key
+      const overdueDate=new Date(key+'T00:00:00');
+      const todayMid=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      const overdueDays=Math.round((todayMid-overdueDate)/(1000*60*60*24));
+      const overdueLabel='Overdue';
+      const pc=t.priority==='important'?'important':'';
+      const row=document.createElement('div');
+      row.className='swipe-row';
+      row.innerHTML=`
+        <div class="action-left" id="al-${key}-${origIdx}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span>편집</span>
+        </div>
+        <div class="action-right" id="ar-${key}-${origIdx}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <span>삭제</span>
+        </div>
+        <div class="todo-item ${t.done?'done':''} ${pc} ${t.indent?'indent':''}" data-key="${key}" data-idx="${origIdx}">
+          <div class="todo-check" onclick="toggleTodo('${key}',${origIdx});event.stopPropagation()">
+            <svg class="checkmark" width="10" height="9" viewBox="0 0 12 10" fill="none">
+              <path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="todo-text ${t.carried?'carried':''}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${isOverdue?`<span class="overdue-badge">${overdueLabel}</span>`:''}${esc(t.text)}${!t.done?`<button class="inbox-move-btn" onclick="moveToInbox('${key}',${origIdx});event.stopPropagation()" title="인박스로 이동"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></button>`:''}</div>
+          <button class="memo-btn ${t.memo?'has-memo':''}" onclick="openMemoModal('todo','${key}',${origIdx});event.stopPropagation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="${t.memo?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          ${t.done?`<button class="done-delete-btn" onclick="deleteDoneTodo('${key}',${origIdx});event.stopPropagation()">✕</button>`:''}
+        </div>`;
+      list.appendChild(row);
+      const itemEl=row.querySelector('.todo-item');
+      const alEl=row.querySelector('.action-left');
+      const arEl=row.querySelector('.action-right');
+      attachSwipe(row,itemEl,alEl,arEl,key,origIdx);
+      attachLongPressDrag(itemEl,key,origIdx);
+    });
+  });
+  renderInbox();
+  requestAnimationFrame(updateFabPosition);
+}
+
+function deleteDoneTodo(key,idx){
+  if(!data[key]) return;
+  data[key].splice(idx,1);
+  if(!data[key].length) delete data[key];
+  save(); render();
+}
+
+// Swipe left=delete, right=edit
+function attachSwipe(row,item,alEl,arEl,key,idx){
+  const SNAP=70, EDIT_THRESHOLD=150, INDENT_THRESHOLD=280;
+  let startX=0,startY=0,curX=0,swiping=false,opened=null;
+  function ptX(e){ return (e.touches?e.touches[0]:e).clientX; }
+  function ptY(e){ return (e.touches?e.touches[0]:e).clientY; }
+  function onStart(e){ if(dragInfo) return; startX=ptX(e); startY=ptY(e); curX=0; swiping=false; }
+  function onMove(e){
+    if(dragInfo) return;
+    const dx=ptX(e)-startX, dy=ptY(e)-startY;
+    if(!swiping&&Math.abs(dy)>Math.abs(dx)+6) return;
+    if(!swiping&&Math.abs(dx)<4) return;
+    swiping=true;
+    if(opened==='right'&&dx>0) curX=0;
+    else if(opened==='left'&&dx<0) curX=0;
+    else curX=Math.max(-INDENT_THRESHOLD-10,Math.min(INDENT_THRESHOLD+10,dx+(opened==='left'?SNAP:opened==='right'?-SNAP:0)));
+    item.style.transition='none';
+    item.style.transform=`translateX(${curX}px)`;
+    if(curX>=INDENT_THRESHOLD){
+      // 들여쓰기 zone - 초록
+      alEl.style.opacity='1'; alEl.classList.add('show');
+      alEl.style.background='#27ae60';
+      alEl.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg><span style="font-size:10px;color:white;font-weight:700;margin-top:2px;">들여쓰기</span>';
+    } else if(curX>0){
+      alEl.style.background='#5352ed';
+      alEl.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span style="font-size:10px;color:white;font-weight:700;margin-top:2px;">편집</span>';
+      alEl.style.opacity=Math.min(1,curX/SNAP)+''; alEl.classList.toggle('show',curX>=SNAP);
+      arEl.classList.remove('show'); arEl.style.opacity='0';
+    } else if(curX<0){
+      alEl.style.opacity='0'; alEl.classList.remove('show'); alEl.style.background='';
+      arEl.style.opacity=Math.min(1,Math.abs(curX)/SNAP)+''; arEl.classList.toggle('show',Math.abs(curX)>=SNAP);
+    } else {
+      alEl.style.opacity='0'; arEl.style.opacity='0';
+      alEl.classList.remove('show'); arEl.classList.remove('show'); alEl.style.background='';
+    }
+    if(e.cancelable) e.preventDefault();
+  }
+  function onEnd(){
+    if(!swiping) return; swiping=false;
+    item.style.transition='transform 0.18s ease';
+    alEl.style.background='';
+    const dist=Math.abs(curX);
+    if(curX>=INDENT_THRESHOLD){ toggleIndent(key,idx); resetRow(); }
+    else if(curX>=EDIT_THRESHOLD){ openEdit(key,idx); resetRow(); }
+    else if(curX>0&&dist>=SNAP){
+      opened='left'; item.style.transform=`translateX(${SNAP}px)`;
+      alEl.style.opacity='1'; alEl.classList.add('show');
+      alEl.style.background='#5352ed';
+      alEl.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span style="font-size:10px;color:white;font-weight:700;margin-top:2px;">편집</span>';
+      alEl.onclick=()=>{ openEdit(key,idx); resetRow(); };
+      addOutside();
+    } else if(curX<=-INDENT_THRESHOLD){ doDelete(key,idx,row); }
+    else if(curX<0&&dist>=SNAP){
+      opened='right'; item.style.transform=`translateX(-${SNAP}px)`;
+      arEl.style.opacity='1'; arEl.classList.add('show');
+      arEl.onclick=()=>{ doDelete(key,idx,row); };
+      addOutside();
+    } else resetRow();
+  }
+  function resetRow(){
+    opened=null; item.style.transition='transform 0.18s ease';
+    item.style.transform='translateX(0)';
+    alEl.style.opacity='0'; arEl.style.opacity='0';
+    alEl.classList.remove('show'); arEl.classList.remove('show');
+    alEl.style.background='';
+  }
+  function addOutside(){
+    setTimeout(()=>{
+      function outside(ev){ if(!row.contains(ev.target)){ resetRow(); document.removeEventListener('touchstart',outside); document.removeEventListener('mousedown',outside); }}
+      document.addEventListener('touchstart',outside); document.addEventListener('mousedown',outside);
+    },50);
+  }
+  item.addEventListener('touchstart',onStart,{passive:true});
+  item.addEventListener('touchmove',onMove,{passive:false});
+  item.addEventListener('touchend',onEnd);
+  item.addEventListener('mousedown',e=>{ onStart(e); document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',()=>{ onEnd(); document.removeEventListener('mousemove',onMove); },{once:true}); });
+}
+
+function toggleIndent(key,idx){
+  if(!data[key]||!data[key][idx]) return;
+  data[key][idx].indent=!data[key][idx].indent;
+  save(); render();
+}
+function doDelete(key,idx,row){
+  const item=row.querySelector('.todo-item');
+  item.style.transition='transform 0.2s, opacity 0.2s';
+  item.style.transform='translateX(-100%)'; item.style.opacity='0';
+  setTimeout(()=>{ if(!data[key]) return; data[key].splice(idx,1); if(!data[key].length) delete data[key]; save(); render(); },200);
+}
+
+// Long press drag - 할일
+function attachLongPressDrag(el,key,idx){
+  const LONG=300; let timer=null, pressing=false, didDrag=false, startX=0, startY=0;
+  function onStart(e){
+    if(e.target.closest('.todo-check,.done-delete-btn')) return;
+    pressing=true; didDrag=false;
+    startX=(e.touches?e.touches[0]:e).clientX;
+    startY=(e.touches?e.touches[0]:e).clientY;
+    timer=setTimeout(()=>{
+      if(!pressing) return;
+      const t=data[key][idx]; if(!t) return;
+      dragInfo={type:'todo',key,idx,text:t.text,priority:t.priority||'none',done:t.done,carried:t.carried};
+      ghost=createClone(el); el.classList.add('dragging'); didDrag=true;
+      const pt=e.touches?e.touches[0]:e; moveGhost(pt.clientX,pt.clientY);
+      if(navigator.vibrate) navigator.vibrate(40);
+    },LONG);
+  }
+  function onMove(e){
+    const pt=e.touches?e.touches[0]:e;
+    const dx=Math.abs(pt.clientX-startX), dy=Math.abs(pt.clientY-startY);
+    // 조금이라도 움직이면 롱프레스 취소 (스와이프 우선)
+    if(!didDrag&&(dx>6||dy>6)){ pressing=false; clearTimeout(timer); return; }
+    if(!didDrag) return;
+    moveGhost(pt.clientX,pt.clientY); handleDragOver(pt.clientX,pt.clientY);
+    if(e.cancelable) e.preventDefault();
+  }
+  function onEnd(){ pressing=false; clearTimeout(timer); if(!didDrag) return; el.classList.remove('dragging'); dropItem(); didDrag=false; }
+  el.addEventListener('touchstart',onStart,{passive:true});
+  el.addEventListener('touchmove',onMove,{passive:false});
+  el.addEventListener('touchend',onEnd);
+  el.addEventListener('mousedown',e=>{ onStart(e); document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',()=>{ onEnd(); document.removeEventListener('mousemove',onMove); },{once:true}); });
+}
+
+// Drag & Drop
+function createClone(el){ const rect=el.getBoundingClientRect(); const clone=el.cloneNode(true); clone.className='drag-clone'; clone.style.width=rect.width+'px'; clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px'; document.body.appendChild(clone); return {clone,rect}; }
+function moveGhost(x,y){ if(!ghost) return; ghost.clone.style.left=(x-ghost.rect.width/2)+'px'; ghost.clone.style.top=(y-ghost.rect.height/2)+'px'; }
+function removeGhost(){ if(ghost){ ghost.clone.remove(); ghost=null; } }
+function clearDragUI(){ document.querySelectorAll('.day-card.drag-over').forEach(e=>e.classList.remove('drag-over')); document.querySelectorAll('.inbox-section.drag-over').forEach(e=>e.classList.remove('drag-over')); document.getElementById('inbox-placeholder').classList.remove('show'); document.querySelectorAll('.swipe-row.drop-above').forEach(e=>e.classList.remove('drop-above')); document.querySelectorAll('.inbox-item.drop-above').forEach(e=>e.classList.remove('drop-above')); }
+
+function handleDragOver(x,y){
+  clearDragUI();
+  const inboxEl=document.getElementById('inbox-section'), ir=inboxEl.getBoundingClientRect();
+  if(x>=ir.left&&x<=ir.right&&y>=ir.top&&y<=ir.bottom){
+    inboxEl.classList.add('drag-over');
+    const items=[...document.querySelectorAll('.inbox-item')];
+    let insertBefore=null;
+    for(const it of items){ const r=it.getBoundingClientRect(); if(y<r.top+r.height/2){ insertBefore=parseInt(it.dataset.inboxIdx); it.classList.add('drop-above'); break; } }
+    currentDropTarget={type:'inbox',insertBefore}; return;
+  }
+  // 투명 blocker 영역 → 날짜변경 모달
+  const blocker=document.getElementById('fab-blocker');
+  if(blocker){ const br=blocker.getBoundingClientRect(); if(x>=br.left&&x<=br.right&&y>=br.top&&y<=br.bottom){ currentDropTarget=null; return; } }
+  for(const card of document.querySelectorAll('.day-card')){
+    const r=card.getBoundingClientRect();
+    if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom){
+      const key=card.dataset.key; card.classList.add('drag-over');
+      const rows=[...card.querySelectorAll('.swipe-row')];
+      let insertBefore=null;
+      for(const row of rows){ const rr=row.getBoundingClientRect(); const rowIdx=parseInt(row.querySelector('.todo-item')?.dataset.idx); if(y<rr.top+rr.height/2){ insertBefore=rowIdx; row.classList.add('drop-above'); break; } }
+      currentDropTarget={type:'todo',key,insertBefore}; return;
+    }
+  }
+  currentDropTarget=null;
+}
+
+function dropItem(){
+  removeGhost(); clearDragUI();
+  if(!dragInfo){ dragInfo=null; currentDropTarget=null; return; }
+  if(!currentDropTarget){
+    if(dragInfo.type==='todo') openCalModal(dragInfo.key,dragInfo.idx,false);
+    else openCalModal(null,dragInfo.idx,true);
+    dragInfo=null; currentDropTarget=null; return;
+  }
+  const src=dragInfo, dst=currentDropTarget;
+  if(dst.type==='inbox'){
+    if(src.type==='todo'){ const t=data[src.key][src.idx]; const pos=dst.insertBefore!=null?dst.insertBefore:inbox.length; inbox.splice(pos,0,t.text); data[src.key].splice(src.idx,1); if(!data[src.key].length) delete data[src.key]; save(); saveInbox(); }
+    else { const pos=dst.insertBefore!=null?dst.insertBefore:inbox.length; if(pos===src.idx||pos===src.idx+1){ dragInfo=null; currentDropTarget=null; render(); return; } const item=inbox.splice(src.idx,1)[0]; const newPos=pos>src.idx?pos-1:pos; inbox.splice(newPos,0,item); saveInbox(); }
+  } else {
+    const dk=dst.key;
+    if(src.type==='todo'){
+      if(src.key===dk){ const pos=dst.insertBefore!=null?dst.insertBefore:data[dk].length; if(pos===src.idx||pos===src.idx+1){ dragInfo=null; currentDropTarget=null; render(); return; } const item=data[dk].splice(src.idx,1)[0]; const newPos=pos>src.idx?pos-1:pos; data[dk].splice(newPos,0,{...item,carried:false}); save(); }
+      else { const t=data[src.key][src.idx]; if(!data[dk]) data[dk]=[]; const pos=dst.insertBefore!=null?dst.insertBefore:data[dk].length; data[dk].splice(pos,0,{...t,carried:false}); data[src.key].splice(src.idx,1); if(!data[src.key].length) delete data[src.key]; save(); }
+    } else { 
+      if(!data[dk]) data[dk]=[]; 
+      const pos=dst.insertBefore!=null?dst.insertBefore:data[dk].length;
+      const it=inbox[src.idx];
+      const text=typeof it==='object'?it.text:it;
+      const memo=typeof it==='object'?it.memo||'':'';
+      data[dk].splice(pos,0,{text,done:false,priority:'none',memo}); 
+      inbox.splice(src.idx,1); 
+      save(); saveInbox(); 
+    }
+  }
+  dragInfo=null; currentDropTarget=null; render();
+}
+
+// Collapse
+function toggleDayCard(key){
+  collapsedDays[key]=!collapsedDays[key]; saveCollapsed();
+  const list=document.getElementById('list-'+key), chev=document.getElementById('chev-'+key), hdr=list&&list.previousElementSibling;
+  if(list) list.classList.toggle('collapsed',collapsedDays[key]);
+  if(chev) chev.classList.toggle('open',!collapsedDays[key]);
+  if(hdr) hdr.classList.toggle('has-todos',!collapsedDays[key]&&(data[key]||[]).length>0);
+}
+
+// ── 삭제 복구 시스템 ──
+let deletedHistory=[]; // 최대 10개
+function restoreLastDeleted(){
+  if(!deletedHistory.length){ alert('복구할 항목이 없어요.'); return; }
+  const last=deletedHistory.pop();
+  if(last.type==='todo'){
+    const {key,item}=last;
+    if(!data[key]) data[key]=[];
+    data[key].unshift(item);
+    save();
+  } else {
+    inbox.unshift(last.item);
+    saveInbox();
+  }
+  render();
+  closeDataModal();
+}
+
+// 진행 중인 삭제 추적
+const pendingDeletes=new Set();
+
+function toggleTodo(key,i){
+  if(!data[key]||!data[key][i]) return;
+
+  // 이미 삭제 대기 중인 항목이면 무시
+  const deleteKey=`${key}:${i}`;
+  if(pendingDeletes.has(deleteKey)) return;
+  pendingDeletes.add(deleteKey);
+
+  // 항목 객체를 참조로 저장 (인덱스는 나중에 밀릴 수 있으므로)
+  const targetItem=data[key][i];
+
+  // data-idx로 row 찾기
+  const listEl=document.getElementById('list-'+key);
+  const movingRow=listEl
+    ? [...listEl.querySelectorAll('.swipe-row')].find(r=>parseInt(r.querySelector('.todo-item')?.dataset.idx)===i)
+    : null;
+
+  function doDelete(){
+    pendingDeletes.delete(deleteKey);
+    if(!data[key]) return;
+    // 객체 참조로 찾기 (인덱스 밀림 문제 방지)
+    const itemIdx=data[key].indexOf(targetItem);
+    if(itemIdx===-1) return;
+    const item=data[key].splice(itemIdx,1)[0];
+    deletedHistory.push({type:'todo', key, item});
+    if(deletedHistory.length>10) deletedHistory.shift();
+    if(!data[key].length) delete data[key];
+    save();
+    // 다른 애니메이션 없을 때만 render
+    if(pendingDeletes.size===0) render();
+  }
+
+  if(!movingRow){ doDelete(); return; }
+
+  const todoItem=movingRow.querySelector('.todo-item');
+  const check=movingRow.querySelector('.todo-check');
+  const text=movingRow.querySelector('.todo-text');
+
+  // 1단계: 체크 + 줄긋기
+  if(check){
+    check.style.background='var(--today-accent)';
+    check.style.borderColor='var(--today-accent)';
+    check.innerHTML='<svg width="10" height="9" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  if(text){ text.style.textDecoration='line-through'; text.style.color='var(--subtext)'; }
+  if(todoItem){ todoItem.style.opacity='0.5'; todoItem.style.transition='opacity 0.2s'; }
+
+  // 2단계: 3초 후 페이드 아웃
+  movingRow.style.opacity='1';
+  setTimeout(()=>{
+    movingRow.style.transition='opacity 1.2s ease';
+    movingRow.style.opacity='0';
+    setTimeout(()=>{
+      movingRow.style.transition='max-height 0.3s ease';
+      movingRow.style.maxHeight=movingRow.offsetHeight+'px';
+      movingRow.offsetHeight;
+      movingRow.style.maxHeight='0';
+      movingRow.style.overflow='hidden';
+      setTimeout(doDelete, 300);
+    }, 1200);
+  }, 3000);
+}
+
+// Calendar
+function buildCalGrid(year,month,selectedKey,onSelect){
+  const DOWS=['일','월','화','수','목','금','토'];
+  const grid=document.createElement('div'); grid.className='inline-cal-grid slide-active';
+  DOWS.forEach(d=>{ const el=document.createElement('div'); el.className='inline-cal-dow'; el.textContent=d; grid.appendChild(el); });
+  const firstDay=new Date(year,month,1).getDay(), daysInMonth=new Date(year,month+1,0).getDate(), todayKey=getTodayKey();
+  for(let i=0;i<firstDay;i++){ const el=document.createElement('div'); el.className='inline-cal-day empty'; grid.appendChild(el); }
+  for(let d=1;d<=daysInMonth;d++){
+    const key=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el=document.createElement('div'); el.className='inline-cal-day'; el.textContent=d;
+    if(key===todayKey) el.classList.add('today-mark');
+    if(key===selectedKey) el.classList.add('selected');
+    if(data[key]&&data[key].length>0) el.classList.add('has-todo');
+    el.onclick=()=>onSelect(key,grid);
+    grid.appendChild(el);
+  }
+  return grid;
+}
+
+function slideCalGrid(wrapId,titleId,year,month,selectedKey,dir,onSelect){
+  const wrap=document.getElementById(wrapId);
+  document.getElementById(titleId).textContent=`${year}년 ${String(month+1).padStart(2,'0')}월`;
+  const oldGrid=wrap.querySelector('.inline-cal-grid');
+  const newGrid=buildCalGrid(year,month,selectedKey,(key,g)=>{
+    onSelect(key);
+    g.querySelectorAll('.inline-cal-day.selected').forEach(e=>e.classList.remove('selected'));
+    g.querySelectorAll('.inline-cal-day:not(.empty)').forEach(el=>{ if(parseInt(el.textContent)===parseInt(key.split('-')[2])) el.classList.add('selected'); });
+  });
+  if(dir!==0){ newGrid.classList.remove('slide-active'); newGrid.classList.add(dir>0?'slide-in-left':'slide-in-right'); }
+  wrap.appendChild(newGrid); newGrid.getBoundingClientRect();
+  if(dir!==0){ if(oldGrid){ oldGrid.classList.remove('slide-active'); oldGrid.classList.add(dir>0?'slide-out-left':'slide-out-right'); } newGrid.classList.remove('slide-in-left','slide-in-right'); newGrid.classList.add('slide-active'); if(oldGrid) setTimeout(()=>oldGrid.remove(),300); }
+  else { if(oldGrid) oldGrid.remove(); }
+}
+
+// Add modal cal
+let addCalYear=0, addCalMonth=0, addCalSelected=null, addCalSwipeStartX=0;
+function addCalChangeMonth(dir){ addCalMonth+=dir; if(addCalMonth>11){addCalMonth=0;addCalYear++;} if(addCalMonth<0){addCalMonth=11;addCalYear--;} slideCalGrid('add-cal-wrap','add-cal-title',addCalYear,addCalMonth,addCalSelected,dir,(key)=>{addCalSelected=key;}); }
+function initAddCal(dateKey){ const d=new Date(dateKey+'T00:00:00'); addCalYear=d.getFullYear(); addCalMonth=d.getMonth(); addCalSelected=dateKey; slideCalGrid('add-cal-wrap','add-cal-title',addCalYear,addCalMonth,addCalSelected,0,(key)=>{addCalSelected=key;}); const cal=document.getElementById('add-inline-cal'); cal.ontouchstart=e=>{addCalSwipeStartX=e.touches[0].clientX;}; cal.ontouchend=e=>{const dx=e.changedTouches[0].clientX-addCalSwipeStartX; if(Math.abs(dx)>50) addCalChangeMonth(dx<0?1:-1);}; }
+
+// Edit modal cal
+let editCalYear=0, editCalMonth=0, editCalSelected=null, editCalSwipeStartX=0;
+function editCalChangeMonth(dir){ editCalMonth+=dir; if(editCalMonth>11){editCalMonth=0;editCalYear++;} if(editCalMonth<0){editCalMonth=11;editCalYear--;} slideCalGrid('edit-cal-wrap','edit-cal-title',editCalYear,editCalMonth,editCalSelected,dir,(key)=>{editCalSelected=key;}); }
+function initEditCal(dateKey){ const d=new Date(dateKey+'T00:00:00'); editCalYear=d.getFullYear(); editCalMonth=d.getMonth(); editCalSelected=dateKey; slideCalGrid('edit-cal-wrap','edit-cal-title',editCalYear,editCalMonth,editCalSelected,0,(key)=>{editCalSelected=key;}); const cal=document.getElementById('edit-inline-cal'); cal.ontouchstart=e=>{editCalSwipeStartX=e.touches[0].clientX;}; cal.ontouchend=e=>{const dx=e.changedTouches[0].clientX-editCalSwipeStartX; if(Math.abs(dx)>50) editCalChangeMonth(dx<0?1:-1);}; }
+
+// Drop cal
+let calPick=null, dropCalYear=0, dropCalMonth=0, dropCalSelected=null, dropCalSwipeStartX=0;
+function dropCalChangeMonth(dir){ dropCalMonth+=dir; if(dropCalMonth>11){dropCalMonth=0;dropCalYear++;} if(dropCalMonth<0){dropCalMonth=11;dropCalYear--;} slideCalGrid('drop-cal-wrap','drop-cal-title',dropCalYear,dropCalMonth,dropCalSelected,dir,(key)=>{dropCalSelected=key;}); }
+function openCalModal(key,idx,isInbox){ calPick={key,idx,isInbox}; const initDate=key?new Date(key+'T00:00:00'):new Date(); dropCalYear=initDate.getFullYear(); dropCalMonth=initDate.getMonth(); dropCalSelected=key||getTodayKey(); slideCalGrid('drop-cal-wrap','drop-cal-title',dropCalYear,dropCalMonth,dropCalSelected,0,(k)=>{dropCalSelected=k;}); document.getElementById('cal-overlay').classList.add('show'); const box=document.getElementById('drop-cal-box'); box.ontouchstart=e=>{dropCalSwipeStartX=e.touches[0].clientX;}; box.ontouchend=e=>{const dx=e.changedTouches[0].clientX-dropCalSwipeStartX; if(Math.abs(dx)>50) dropCalChangeMonth(dx<0?1:-1);}; }
+function closeCalModal(){ document.getElementById('cal-overlay').classList.remove('show'); calPick=null; }
+function confirmCalPick(){ 
+  if(!dropCalSelected||!calPick){ closeCalModal(); return; } 
+  const newDate=dropCalSelected; 
+  if(calPick.isInbox){ 
+    const it=inbox[calPick.idx];
+    const text=typeof it==='object'?it.text:it;
+    const memo=typeof it==='object'?it.memo||'':'';
+    if(!data[newDate]) data[newDate]=[];
+    data[newDate].push({text,done:false,priority:'none',memo});
+    inbox.splice(calPick.idx,1); 
+    save(); saveInbox(); 
+  } else { 
+    const t=data[calPick.key][calPick.idx]; 
+    data[calPick.key].splice(calPick.idx,1); 
+    if(!data[calPick.key].length) delete data[calPick.key]; 
+    if(!data[newDate]) data[newDate]=[];
+    data[newDate].push({...t,carried:false}); 
+    save(); 
+  } 
+  closeCalModal(); render(); 
+}
+// Add modal
+function setAddPriority(p){ addPriority=p; ['none','important'].forEach(v=>{ document.getElementById('add-opt-'+v).className='priority-opt'+(p===v?' sel-'+v:''); }); }
+function openAddModalForDate(key){ addPriority='none'; setAddPriority('none'); document.getElementById('add-text').value=''; initAddCal(key); document.getElementById('add-modal').classList.add('show'); const input=document.getElementById('add-text'); input.focus(); input.click(); }
+function openAddModal(){ addPriority='none'; setAddPriority('none'); document.getElementById('add-text').value=''; initAddCal(getTodayKey()); document.getElementById('add-modal').classList.add('show'); const input=document.getElementById('add-text'); input.focus(); input.click(); }
+function closeAddModal(){ document.getElementById('add-modal').classList.remove('show'); document.getElementById('add-text').blur(); }
+function confirmAdd(){
+  const text=document.getElementById('add-text').value.trim();
+  let dateVal=addCalSelected;
+  if(!text||!dateVal) return;
+  const todayKey=getTodayKey();
+  const isPast=dateVal<todayKey;
+  const targetKey=isPast?todayKey:dateVal;
+  if(!data[targetKey]) data[targetKey]=[];
+  const newItem={text,done:false,priority:addPriority,...(isPast?{overdue:true,overdueFrom:dateVal}:{})};
+  if(addPriority==='important'){
+    data[targetKey].unshift(newItem);
+  } else {
+    const firstDoneIdx=data[targetKey].findIndex(t=>t.done);
+    if(firstDoneIdx===-1) data[targetKey].push(newItem);
+    else data[targetKey].splice(firstDoneIdx,0,newItem);
+  }
+  save(); render(); closeAddModal();
+}
+document.getElementById('add-text').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmAdd(); if(e.key==='Escape') closeAddModal(); });
+
+// Edit modal
+function setEditPriority(p){ editPriority=p; ['none','important'].forEach(v=>{ document.getElementById('edit-opt-'+v).className='priority-opt'+(p===v?' sel-'+v:''); }); }
+function openEdit(key,idx){
+  editTarget={key,idx}; const t=data[key][idx];
+  initEditCal(key);
+  document.getElementById('edit-text').value=t.text;
+  setEditPriority(t.priority||'none');
+  document.getElementById('edit-modal').classList.add('show');
+  const inp=document.getElementById('edit-text'); inp.focus(); inp.click();
+}
+function closeEditModal(){ document.getElementById('edit-modal').classList.remove('show'); editTarget=null; }
+function confirmEdit(){
+  if(!editTarget) return;
+  const {key,idx}=editTarget;
+  const newText=document.getElementById('edit-text').value.trim();
+  if(!newText||!editCalSelected) return;
+  const t=data[key][idx];
+  const updated={...t,text:newText,priority:editPriority,carried:false,overdue:false};
+  if(key===editCalSelected){
+    // 같은 날짜 - 원래 위치 그대로
+    data[key][idx]=updated;
+  } else {
+    // 날짜 변경 - 기존 위치에서 제거, 새 날짜 끝에 추가
+    data[key].splice(idx,1);
+    if(!data[key].length) delete data[key];
+    if(!data[editCalSelected]) data[editCalSelected]=[];
+    data[editCalSelected].push(updated);
+  }
+  save(); render(); closeEditModal();
+}
+function confirmDeleteFromEdit(){ if(!editTarget) return; const {key,idx}=editTarget; data[key].splice(idx,1); if(!data[key].length) delete data[key]; save(); render(); closeEditModal(); }
+
+// Inbox
+function renderInbox(){
+  const list=document.getElementById('inbox-list'), countEl=document.getElementById('inbox-count');
+  list.innerHTML='';
+  const undone=inbox.filter(it=>typeof it==='object'?!it.done:true).length;
+  countEl.textContent=inbox.length>0?undone||'':'';
+  inbox.forEach((item,i)=>{
+    const text=typeof item==='object'?item.text:item;
+    const done=typeof item==='object'?!!item.done:false;
+    const row=document.createElement('div'); row.className='swipe-row';
+    row.innerHTML=`
+      <div class="action-left" id="ial-${i}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>편집</span>
+      </div>
+      <div class="action-right" id="iar-${i}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <span>삭제</span>
+      </div>
+      <div class="inbox-item ${done?'done':''}" id="iitem-${i}" data-inbox-idx="${i}">
+        <div class="inbox-dot" onclick="toggleInboxDone(${i});event.stopPropagation()">
+          ${done?`<svg width="10" height="9" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+        </div>
+        <div class="inbox-text">${esc(text)}</div>
+        <div class="inbox-actions">
+          <button class="inbox-memo-btn ${(typeof item==='object'&&item.memo)?'has-memo':''}" onclick="openMemoModal('inbox',null,${i});event.stopPropagation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="${(typeof item==='object'&&item.memo)?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          ${!done?`<button class="inbox-today-btn" onclick="moveInboxToToday(${i});event.stopPropagation()">오늘</button>`:''}
+          ${done?`<button class="done-delete-btn" onclick="doInboxDelete(${i},this.closest('.swipe-row'));event.stopPropagation()">✕</button>`:''}
+        </div>
+      </div>`;
+    list.appendChild(row);
+    const itemEl=row.querySelector('.inbox-item');
+    attachInboxSwipe(row,itemEl,row.querySelector('.action-left'),row.querySelector('.action-right'),i);
+    attachInboxLongPressDrag(itemEl,i);
+  });
+  updateFabPosition();
+}
+
+function getInboxText(idx){ const it=inbox[idx]; return typeof it==='object'?it.text:it; }
+
+const pendingInboxDeletes=new Set();
+
+function toggleInboxDone(idx){
+  if(idx<0||idx>=inbox.length) return;
+  if(pendingInboxDeletes.has(idx)) return;
+  pendingInboxDeletes.add(idx);
+
+  const row=document.getElementById('iitem-'+idx)?.closest('.swipe-row');
+  const dot=document.getElementById('iitem-'+idx)?.querySelector('.inbox-dot');
+  const text=document.getElementById('iitem-'+idx)?.querySelector('.inbox-text');
+
+  function doDelete(){
+    pendingInboxDeletes.delete(idx);
+    if(idx>=inbox.length) return;
+    const item=inbox.splice(idx,1)[0];
+    deletedHistory.push({type:'inbox', item});
+    if(deletedHistory.length>10) deletedHistory.shift();
+    saveInbox();
+    if(pendingInboxDeletes.size===0) renderInbox();
+  }
+
+  if(!row){ doDelete(); return; }
+
+  // 1단계: 체크 + 줄긋기
+  if(dot){
+    dot.style.background='var(--add-green)';
+    dot.style.borderColor='var(--add-green)';
+    dot.innerHTML='<svg width="10" height="9" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  if(text){ text.style.textDecoration='line-through'; text.style.color='var(--subtext)'; }
+
+  // 2단계: 3초 후 페이드 아웃
+  row.style.opacity='1';
+  setTimeout(()=>{
+    row.style.transition='opacity 1.2s ease';
+    row.style.opacity='0';
+    setTimeout(()=>{
+      row.style.transition='max-height 0.3s ease';
+      row.style.maxHeight=row.offsetHeight+'px';
+      row.offsetHeight;
+      row.style.maxHeight='0';
+      row.style.overflow='hidden';
+      setTimeout(doDelete, 300);
+    }, 1200);
+  }, 3000);
+}
+
+function attachInboxSwipe(row,item,alEl,arEl,idx){
+  const SNAP=80,FULL=220; let startX=0,startY=0,curX=0,swiping=false,opened=null;
+  function ptX(e){return (e.touches?e.touches[0]:e).clientX;}
+  function onStart(e){ if(dragInfo) return; startX=ptX(e); startY=(e.touches?e.touches[0]:e).clientY; curX=0; swiping=false; }
+  function onMove(e){ if(dragInfo) return; const dx=ptX(e)-startX,dy=(e.touches?e.touches[0]:e).clientY-startY; if(!swiping&&Math.abs(dy)>Math.abs(dx)+6) return; if(!swiping&&Math.abs(dx)<4) return; swiping=true; if(opened==='right'&&dx>0) curX=0; else if(opened==='left'&&dx<0) curX=0; else curX=Math.max(-FULL-10,Math.min(FULL+10,dx+(opened==='left'?SNAP:opened==='right'?-SNAP:0))); item.style.transition='none'; item.style.transform=`translateX(${curX}px)`; if(curX>0){alEl.style.opacity=Math.min(1,curX/SNAP);alEl.classList.toggle('show',curX>=SNAP);arEl.classList.remove('show');arEl.style.opacity=0;} else if(curX<0){arEl.style.opacity=Math.min(1,Math.abs(curX)/SNAP);arEl.classList.toggle('show',Math.abs(curX)>=SNAP);alEl.classList.remove('show');alEl.style.opacity=0;} else{alEl.style.opacity=0;arEl.style.opacity=0;alEl.classList.remove('show');arEl.classList.remove('show');} if(e.cancelable) e.preventDefault(); }
+  function onEnd(){ if(!swiping) return; swiping=false; item.style.transition='transform 0.18s ease'; const dist=Math.abs(curX); if(curX>=FULL){openInboxEdit(idx);resetRow();} else if(curX>0&&dist>=SNAP){opened='left';item.style.transform=`translateX(${SNAP}px)`;alEl.style.opacity='1';alEl.classList.add('show');alEl.onclick=()=>{openInboxEdit(idx);resetRow();};addOutside();} else if(curX<=-FULL){doInboxDelete(idx,row);} else if(curX<0&&dist>=SNAP){opened='right';item.style.transform=`translateX(-${SNAP}px)`;arEl.style.opacity='1';arEl.classList.add('show');arEl.onclick=()=>{doInboxDelete(idx,row);};addOutside();} else resetRow(); }
+  function resetRow(){ opened=null;item.style.transition='transform 0.18s ease';item.style.transform='translateX(0)';alEl.style.opacity=0;arEl.style.opacity=0;alEl.classList.remove('show');arEl.classList.remove('show'); }
+  function addOutside(){ setTimeout(()=>{ function outside(ev){if(!row.contains(ev.target)){resetRow();document.removeEventListener('touchstart',outside);document.removeEventListener('mousedown',outside);}} document.addEventListener('touchstart',outside);document.addEventListener('mousedown',outside); },50); }
+  item.addEventListener('touchstart',onStart,{passive:true}); item.addEventListener('touchmove',onMove,{passive:false}); item.addEventListener('touchend',onEnd);
+  item.addEventListener('mousedown',e=>{ onStart(e); document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',()=>{onEnd();document.removeEventListener('mousemove',onMove);},{once:true}); });
+}
+
+function doInboxDelete(idx,row){ const item=row.querySelector('.inbox-item'); item.style.transition='transform 0.2s, opacity 0.2s'; item.style.transform='translateX(-100%)'; item.style.opacity='0'; setTimeout(()=>{inbox.splice(idx,1);saveInbox();renderInbox();},200); }
+
+let inboxEditIdx=null;
+function openInboxEdit(idx){
+  if(idx<0||idx>=inbox.length) return;
+  inboxEditIdx=idx;
+  const item=inbox[idx]; const text=typeof item==='object'?item.text:item;
+  document.getElementById('inbox-edit-text').value=text;
+  document.getElementById('inbox-edit-modal').classList.add('show');
+  setTimeout(()=>{const inp=document.getElementById('inbox-edit-text');inp.focus();inp.click();},100);
+}
+function closeInboxEdit(){ document.getElementById('inbox-edit-modal').classList.remove('show'); inboxEditIdx=null; }
+function confirmInboxEdit(){
+  const text=document.getElementById('inbox-edit-text').value.trim();
+  if(!text||inboxEditIdx===null) return;
+  const item=inbox[inboxEditIdx];
+  inbox[inboxEditIdx]=typeof item==='object'?{...item,text}:text;
+  saveInbox(); renderInbox(); closeInboxEdit();
+}
+
+function attachInboxLongPressDrag(el,idx){
+  const LONG=300; let timer=null, pressing=false, didDrag=false, startX=0, startY=0;
+  function onStart(e){
+    pressing=true; didDrag=false;
+    startX=(e.touches?e.touches[0]:e).clientX;
+    startY=(e.touches?e.touches[0]:e).clientY;
+    timer=setTimeout(()=>{
+      if(!pressing) return;
+      dragInfo={type:'inbox',idx,text:getInboxText(idx)};
+      ghost=createClone(el); el.classList.add('dragging'); didDrag=true;
+      const pt=e.touches?e.touches[0]:e; moveGhost(pt.clientX,pt.clientY);
+      if(navigator.vibrate) navigator.vibrate(40);
+    },LONG);
+  }
+  function onMove(e){
+    const pt=e.touches?e.touches[0]:e;
+    const dx=Math.abs(pt.clientX-startX), dy=Math.abs(pt.clientY-startY);
+    if(!didDrag&&(dx>6||dy>6)){ pressing=false; clearTimeout(timer); return; }
+    if(!didDrag) return;
+    moveGhost(pt.clientX,pt.clientY); handleDragOver(pt.clientX,pt.clientY);
+    if(e.cancelable) e.preventDefault();
+  }
+  function onEnd(){ pressing=false; clearTimeout(timer); if(!didDrag) return; el.classList.remove('dragging'); dropItem(); didDrag=false; }
+  el.addEventListener('touchstart',onStart,{passive:true});
+  el.addEventListener('touchmove',onMove,{passive:false});
+  el.addEventListener('touchend',onEnd);
+  el.addEventListener('mousedown',e=>{
+    onStart(e);
+    function mm(ev){ const dx=Math.abs(ev.clientX-startX),dy=Math.abs(ev.clientY-startY); if(!didDrag&&(dx>6||dy>6)){pressing=false;clearTimeout(timer);return;} if(didDrag){moveGhost(ev.clientX,ev.clientY);handleDragOver(ev.clientX,ev.clientY);}}
+    function mu(){ pressing=false; clearTimeout(timer); if(didDrag){el.classList.remove('dragging');dropItem();}else dragInfo=null; didDrag=false; document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  });
+}
+
+function updateFabPosition(){
+  const inboxEl=document.getElementById('inbox-section'), fab=document.getElementById('fab');
+  if(!inboxEl||!fab) return;
+  const inboxH=inboxEl.offsetHeight;
+  const fabBottom=inboxH+12;
+  fab.style.bottom=fabBottom+'px';
+  const scrollWrap=document.getElementById('scroll-wrap');
+  if(scrollWrap) scrollWrap.style.paddingBottom=(fabBottom+62)+'px';
+}
+function toggleInbox(){
+  const body=document.getElementById('inbox-body'),chev=document.getElementById('inbox-chevron');
+  const open=body.classList.toggle('open'); chev.classList.toggle('open',open);
+  if(open) setTimeout(()=>document.getElementById('inbox-input').focus(),150);
+  // 인박스 열리면 FAB도 같이 올라감 - 여러번 호출해서 애니메이션 추적
+  updateFabPosition();
+  setTimeout(updateFabPosition,50);
+  setTimeout(updateFabPosition,150);
+  setTimeout(updateFabPosition,300);
+}
+function addInboxItem(){ const input=document.getElementById('inbox-input'),text=input.value.trim(); if(!text) return; inbox.push(text); saveInbox(); renderInbox(); input.value=''; }
+
+function moveToInbox(key,i){
+  if(!data[key]||!data[key][i]) return;
+  const item=data[key][i];
+  inbox.push(item.text);
+  saveInbox();
+  data[key].splice(i,1);
+  if(!data[key].length) delete data[key];
+  save();
+  render();
+}
+
+// ── Memo Modal ──
+let memoTarget=null, memoBullet=false;
+function toggleMemoBullet(){
+  memoBullet=!memoBullet;
+  const btn=document.getElementById('memo-bullet-toggle');
+  const ta=document.getElementById('memo-text');
+  if(!btn||!ta) return;
+  if(memoBullet){
+    btn.innerHTML='● 있음';
+    btn.style.cssText='padding:4px 12px; border-radius:6px; border:1.5px solid var(--today-accent); font-size:13px; color:var(--today-accent); cursor:pointer; font-family:\'Noto Sans KR\',sans-serif; user-select:none; -webkit-user-select:none; display:inline-block; background:rgba(33,150,243,0.1);';
+    // 텍스트 앞에 • 삽입 (없으면)
+    const cur=ta.value;
+    if(!cur.startsWith('• ')){
+      ta.value='• '+cur;
+    }
+    // iOS Safari: setTimeout으로 focus + 커서 끝
+    setTimeout(()=>{
+      ta.focus();
+      ta.selectionStart=ta.selectionEnd=ta.value.length;
+    },0);
+  } else {
+    btn.innerHTML='○ 없음';
+    btn.style.cssText='padding:4px 12px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; color:var(--subtext); cursor:pointer; font-family:\'Noto Sans KR\',sans-serif; user-select:none; -webkit-user-select:none; display:inline-block; background:var(--bg);';
+    // 모든 줄에서 • 제거
+    ta.value=ta.value.split('\n').map(l=>l.startsWith('• ')?l.slice(2):l).join('\n');
+    setTimeout(()=>{ ta.focus(); },0);
+  }
+}
+
+function handleMemoKey(e){
+  if(!memoBullet) return;
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const ta=e.target;
+    const pos=ta.selectionStart;
+    const before=ta.value.slice(0,pos);
+    const after=ta.value.slice(pos);
+    // 현재 줄이 비어있으면 bullet 모드 종료
+    const lines=before.split('\n');
+    const currentLine=lines[lines.length-1];
+    if(currentLine==='• '){
+      // 빈 bullet 줄 → bullet 제거하고 일반 줄
+      const newVal=before.slice(0,-2)+'\n'+after;
+      ta.value=newVal;
+      ta.selectionStart=ta.selectionEnd=pos-2+1;
+    } else {
+      // 새 줄에 • 자동 삽입
+      const newVal=before+'\n• '+after;
+      ta.value=newVal;
+      ta.selectionStart=ta.selectionEnd=pos+3;
+    }
+  }
+}
+function openMemoModal(type, key, idx){
+  memoTarget={type,key,idx};
+  let memo='';
+  if(type==='todo'){ const t=data[key]&&data[key][idx]; memo=t&&t.memo?t.memo:''; }
+  else { const it=inbox[idx]; memo=(typeof it==='object'&&it.memo)?it.memo:''; }
+  document.getElementById('memo-text').value=memo;
+  // • 로 시작하면 bullet on
+  memoBullet=memo.startsWith('• ');
+  const btn=document.getElementById('memo-bullet-toggle');
+  if(btn){
+    if(memoBullet){
+      btn.innerHTML='● 있음';
+      btn.style.cssText='padding:4px 12px; border-radius:6px; border:1.5px solid var(--today-accent); font-size:13px; color:var(--today-accent); cursor:pointer; font-family:\'Noto Sans KR\',sans-serif; user-select:none; -webkit-user-select:none; display:inline-block; background:rgba(33,150,243,0.1);';
+    } else {
+      btn.innerHTML='○ 없음';
+      btn.style.cssText='padding:4px 12px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; color:var(--subtext); cursor:pointer; font-family:\'Noto Sans KR\',sans-serif; user-select:none; -webkit-user-select:none; display:inline-block; background:var(--bg);';
+    }
+  }
+  document.getElementById('memo-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('memo-text').focus(),100);
+}
+function closeMemoModal(){
+  document.getElementById('memo-modal').classList.remove('show');
+  memoTarget=null;
+}
+function confirmMemo(){
+  if(!memoTarget) return;
+  const memo=document.getElementById('memo-text').value.trim();
+  if(memoTarget.type==='todo'){
+    const {key,idx}=memoTarget;
+    if(data[key]&&data[key][idx]){ data[key][idx].memo=memo; save(); }
+  } else {
+    const idx=memoTarget.idx, it=inbox[idx];
+    inbox[idx]=typeof it==='string'?{text:it,memo}:{...it,memo};
+    saveInbox();
+  }
+  render(); closeMemoModal();
+}
+
+// ── 인박스 → 오늘 이동 ──
+function moveInboxToToday(idx){
+  if(idx<0||idx>=inbox.length) return;
+  const it=inbox[idx];
+  const text=typeof it==='object'?it.text:it;
+  const memo=typeof it==='object'?it.memo||'':'';
+  const todayKey=getTodayKey();
+  if(!data[todayKey]) data[todayKey]=[];
+  data[todayKey].push({text,done:false,priority:'none',memo});
+  inbox.splice(idx,1);
+  save(); saveInbox(); render();
+}
+
+function resetAllData(){
+  if(!confirm('⚠️ 모든 할 일과 인박스가 삭제됩니다.\n정말 초기화할까요?')) return;
+  data={}; inbox=[]; collapsedDays={};
+  save(); saveInbox(); saveCollapsed();
+  deletedHistory=[];
+  closeDataModal(); render();
+}
+
+// Data modal
+function openDataModal(){ document.getElementById('data-modal-overlay').classList.add('show'); }
+function closeDataModal(){ document.getElementById('data-modal-overlay').classList.remove('show'); }
+function exportData(){ const payload=JSON.stringify({data,inbox},null,2); const blob=new Blob([payload],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='TodoList-backup.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
+function importData(){ const fileInput=document.createElement('input'); fileInput.type='file'; fileInput.accept='.json,application/json'; fileInput.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=evt=>{ try{ const parsed=JSON.parse(evt.target.result); if(typeof parsed.data!=='object') throw new Error(); if(!confirm('현재 데이터를 덮어쓸까요? 되돌릴 수 없어요.')) return; data=parsed.data; inbox=Array.isArray(parsed.inbox)?parsed.inbox:[]; save(); saveInbox(); closeDataModal(); render(); alert('✅ 가져오기 완료!'); }catch(e){ alert('파일 형식이 올바르지 않아요.\nTodoList-backup.json 파일만 사용해주세요.'); } }; reader.readAsText(file); }; fileInput.click(); }
+
+// Init
+load(); autoCarryOver(); loadInbox(); loadCollapsed(); render();
+updateFabPosition();
+setInterval(render,60000);
+</script>
+</body>
+</html>
