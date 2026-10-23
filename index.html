@@ -144,6 +144,7 @@
   .inbox-chevron.open { transform:rotate(90deg); }
   .inbox-body { display:none; border-top:1px solid var(--border); }
   .inbox-body.open { display:block; }
+  #inbox-list { max-height:40vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .inbox-item { display:flex; align-items:center; gap:8px; padding:8px 14px; border-bottom:1px solid var(--border); touch-action:pan-y; user-select:none; -webkit-user-select:none; }
   .inbox-item:last-child { border-bottom:none; }
   .inbox-item.dragging { opacity:0.35; }
@@ -952,7 +953,8 @@ function confirmCalPick(){
     data[calPick.key].splice(calPick.idx,1); 
     if(!data[calPick.key].length) delete data[calPick.key]; 
     if(!data[newDate]) data[newDate]=[];
-    data[newDate].push({...t,carried:false}); 
+    const moved={...t,carried:false,overdue:false}; delete moved.overdueFrom;
+    data[newDate].push(moved); 
     save(); 
   } 
   closeCalModal(); render(); 
@@ -999,7 +1001,7 @@ function confirmEdit(){
   const newText=document.getElementById('edit-text').value.trim();
   if(!newText||!editCalSelected) return;
   const t=data[key][idx];
-  const updated={...t,text:newText,priority:editPriority,carried:false,overdue:false};
+  const updated={...t,text:newText,priority:editPriority,carried:false,overdue:false}; delete updated.overdueFrom;
   if(key===editCalSelected){
     // 같은 날짜 - 원래 위치 그대로
     data[key][idx]=updated;
